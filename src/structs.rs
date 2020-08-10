@@ -9,6 +9,8 @@ use std::error;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 use std::io;
+pub type ReaderResult = Result<FChatMessage, ParseError>;
+pub type WriterResult = Result<(), ParseError>;
 
 #[derive(Clone)]
 pub enum FChatMessageType {
@@ -163,7 +165,7 @@ impl FChatMessage {
     pub fn write_to_buf<B: io::Write + byteorder::WriteBytesExt>(
         &self,
         buffer: &mut B,
-    ) -> Result<(), ParseError> {
+    ) -> WriterResult {
         let epoch_seconds: u32 = self.datetime.timestamp().try_into()?;
         let sender_length: u8 = self.sender.as_bytes().len().try_into()?;
         let message_length: u16 = self.body.bytes_used().try_into()?;
@@ -183,7 +185,7 @@ impl FChatMessage {
 
     pub fn read_from_buf<B: io::Read + byteorder::ReadBytesExt>(
         buffer: &mut B,
-    ) -> Result<FChatMessage, ParseError> {
+    ) -> ReaderResult {
         let datetime_buf = buffer.read_u32::<LittleEndian>()?;
         let datetime: NaiveDateTime = NaiveDateTime::from_timestamp(datetime_buf as i64, 0);
         let message_type: u8 = buffer.read_u8()?;
