@@ -142,22 +142,7 @@ fn read_using_reader() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[test]
-fn can_parse_index() -> Result<(), Box<dyn Error>> {
-    let dir = create_dir()?;
-    let log_fd = create_test_file(&dir, "1", TEST_CONTENTS)?;
-    let idx_fd = create_test_file(&dir, "1.idx", TEST_INDEX)?;
-    let writer = FChatWriter::new(dir.path().join("1"), Some(dir.path().join("1.idx")), None);
-    dir.close()?;
-    Ok(())
-}
-
-#[test]
-fn can_create_index() -> Result<(), Box<dyn Error>> {
-    let dir = create_dir()?;
-    let log_fd = create_test_file(&dir, "1", TEST_CONTENTS)?;
-    let writer = FChatWriter::new(dir.path().join("1"), Some(dir.path().join("1.idx")), Some("Carlen White".to_string()))?;
-    // Check if the offsets are actually valid
+fn check_index(log_fd: File, writer: FChatWriter) -> Result<(), Box<dyn Error>> {
     let index = writer.index.unwrap();
     let mut log_reader = BufReader::new(log_fd);
     let mut tested: u64 = 0;
@@ -168,6 +153,26 @@ fn can_create_index() -> Result<(), Box<dyn Error>> {
         tested += 1;
     }
     eprintln!("Tested {} offsets", tested);
+    Ok(())
+}
+
+#[test]
+fn can_parse_index() -> Result<(), Box<dyn Error>> {
+    let dir = create_dir()?;
+    let log_fd = create_test_file(&dir, "1", TEST_CONTENTS)?;
+    let idx_fd = create_test_file(&dir, "1.idx", TEST_INDEX)?;
+    let writer = FChatWriter::new(dir.path().join("1"), Some(dir.path().join("1.idx")), None)?;
+    check_index(log_fd, writer)?;
+    dir.close()?;
+    Ok(())
+}
+
+#[test]
+fn can_create_index() -> Result<(), Box<dyn Error>> {
+    let dir = create_dir()?;
+    let log_fd = create_test_file(&dir, "1", TEST_CONTENTS)?;
+    let writer = FChatWriter::new(dir.path().join("1"), Some(dir.path().join("1.idx")), Some("Carlen White".to_string()))?;
+    check_index(log_fd, writer)?;
     dir.close()?;
     Ok(())
 }
