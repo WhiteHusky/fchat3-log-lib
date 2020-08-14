@@ -60,3 +60,63 @@ impl Error for UnknownMessageType {
         "The message type is unknown"
     }
 }
+
+pub struct ConformanceError {
+    pub reason: String
+}
+
+impl Display for ConformanceError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(
+            f,
+            "The information inputted does not conform to what is expected. Reason: {}",
+            self.reason
+        )
+    }
+}
+
+impl Debug for ConformanceError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(
+            f,
+            "ConformanceError {{ reason: {} }}",
+            self.reason
+        )
+    }
+}
+
+impl Error for ConformanceError {
+    fn description(&self) -> &str {
+        "The information inputted does not conform to what is expected. The standard may have changed or there's a problem with a file."
+    }
+}
+
+pub struct InadequateInformation {
+    pub reason: String
+}
+
+impl Display for InadequateInformation {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Not enough information specified. Reason: {}",
+            self.reason
+        )
+    }
+}
+
+impl Debug for InadequateInformation {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(
+            f,
+            "InadequateInformation {{ reason: {} }}",
+            self.reason
+        )
+    }
+}
+
+impl Error for InadequateInformation {
+    fn description(&self) -> &str {
+        "More information is needed to operate."
+    }
+}
