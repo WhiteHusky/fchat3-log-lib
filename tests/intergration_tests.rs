@@ -156,7 +156,7 @@ fn can_parse_index() -> Result<(), Box<dyn Error>> {
 fn can_create_index() -> Result<(), Box<dyn Error>> {
     let dir = create_dir()?;
     let log_fd = create_test_file(&dir, "1", TEST_CONTENTS)?;
-    let writer = FChatWriter::new(dir.path().join("1"), Some(dir.path().join("1.idx")), Some("Furries".to_string()))?;
+    let writer = FChatWriter::new(dir.path().join("1"), Some(dir.path().join("1.idx")), Some("Carlen White".to_string()))?;
     // Check if the offsets are actually valid
     let index = writer.index.unwrap();
     let mut log_reader = BufReader::new(log_fd);
