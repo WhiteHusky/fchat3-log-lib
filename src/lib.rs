@@ -99,14 +99,8 @@ pub struct FChatWriter {
     idx_fd: Option<File>,
 }
 
-// TODO: Probably should be replaced with something less...egregious.
-fn get_message(result: FChatMessageReaderResult) -> Option<ChatMessage> {
-    // Thanks to @12Boti#0628 for showing that this is a thing
-    match result {
-        Ok(message) => Some(message),
-        Err(Error::EOF(_)) => None,
-        Err(err) => { eprintln!("{:?}", err); None}
-    }
+fn different_day<A: Datelike, B: Datelike>(d1: A, d2: B) -> bool {
+    d1.year() != d2.year() || d1.month() != d2.month() || d1.day() != d2.day()
 }
 
 impl FChatWriter {
@@ -166,28 +160,14 @@ impl FChatWriter {
                 let message_reader = FChatMessageReader::new(log_reader);
                 let mut current_offset: u64 = 0;
                 for result in message_reader {
-                    match get_message(result) {
-                        Some(message) => {
-                            let mut do_write = false;
-                            if index.offsets.is_empty() {
-                                do_write = true;
-                            } else {
-                                let l_datetime = index.offsets.last().unwrap().date;
-                                let m_datetime = message.datetime;
-                                if m_datetime.year() != l_datetime.year() || m_datetime.month() != l_datetime.month() || m_datetime.day() != l_datetime.day() {
-                                    do_write = true;
-                                }
-                            }
-                            if do_write {
-                                index.offsets.push(IndexOffset {
-                                    date: message.datetime.date(),
-                                    offset: current_offset
-                                })
-                            }
-                            current_offset += message.bytes_used() as u64 + 2;
-                        }
-                        None => {break}
+                    let message = result?;
+                    if index.offsets.is_empty() || different_day(index.offsets.last().unwrap().date, message.datetime) {
+                        index.offsets.push(IndexOffset {
+                            date: message.datetime.date(),
+                            offset: current_offset
+                        })
                     }
+                    current_offset += message.bytes_used() as u64 + 2;
                 }
             }
             eprintln!("Created {} offsets", index.offsets.len());
