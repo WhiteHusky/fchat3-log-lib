@@ -3,18 +3,18 @@ use std::error;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
-use std::{path::PathBuf, io::SeekFrom};
+use std::io::SeekFrom;
 use tempdir::TempDir;
 use byteorder;
-use byteorder::{ReadBytesExt, LittleEndian};
-use std::io::{BufReader, BufWriter};
+use byteorder::{ReadBytesExt};
+use std::io::{BufReader};
 const DIR_NAME: &str = "fchat3-log-lib-tests";
 const TEST_CONTENTS: &[u8] = include_bytes!("carlen white");
 const TEST_INDEX: &[u8] = include_bytes!("carlen white.idx");
 
 use fchat3_log_lib::fchat_message::{FChatMessage, FChatMessageType};
 use fchat3_log_lib::error::Error;
-use fchat3_log_lib::{FChatMessageReader, FChatMessageReaderReversed, FChatWriter};
+use fchat3_log_lib::{FChatMessageReader, FChatWriter};
 
 type BoxedError = Box<dyn error::Error>;
 
@@ -160,7 +160,8 @@ fn check_index(log_fd: File, writer: FChatWriter) -> Result<(), BoxedError> {
 fn can_parse_index() -> Result<(), BoxedError> {
     let dir = create_dir()?;
     let log_fd = create_test_file(&dir, "1", TEST_CONTENTS)?;
-    let idx_fd = create_test_file(&dir, "1.idx", TEST_INDEX)?;
+    create_test_file(&dir, "1.idx", TEST_INDEX)?;
+    //let idx_fd = create_test_file(&dir, "1.idx", TEST_INDEX)?;
     let writer = FChatWriter::new(dir.path().join("1"), Some(dir.path().join("1.idx")), None)?;
     check_index(log_fd, writer)?;
     dir.close()?;

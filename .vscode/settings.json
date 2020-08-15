@@ -1,9 +1,13 @@
 {
     "cSpell.words": [
+        "Boti",
+        "Datelike",
         "byteorder",
+        "carlen",
         "chrono",
         "datetime",
-        "fchat"
+        "fchat",
+        "tempdir"
     ],
     "debug.allowBreakpointsEverywhere": true
 }

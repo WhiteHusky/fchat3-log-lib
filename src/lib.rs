@@ -15,21 +15,6 @@ use crate::fchat_index::FChatIndex as Index;
 use crate::fchat_index::FChatIndexOffset as IndexOffset;
 use crate::error::Error;
 
-/*
-use byteorder;
-use byteorder::{LittleEndian, ReadBytesExt};
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-use chrono::Datelike;
-use std::fs::File;
-use std::fs::OpenOptions;
-use std::io::{BufReader, BufWriter};
-use std::io::{Read, Seek, SeekFrom, Write};
-use std::path::PathBuf;
-use std::fmt;
-use std::fmt::{Debug, Display, Formatter};
-*/
-const SECONDS_IN_DAY: u32 = 86400;
-
 // TODO: Look into dynamic dispatch
 // https://discordapp.com/channels/442252698964721669/443150878111694848/742291981849460736
 
@@ -108,8 +93,7 @@ fn get_message(result: FChatMessageReaderResult) -> Option<ChatMessage> {
     match result {
         Ok(message) => Some(message),
         Err(Error::EOF(_)) => None,
-        Err(err) => { eprintln!("{:?}", err); None},
-        _ => None
+        Err(err) => { eprintln!("{:?}", err); None}
     }
 }
 
@@ -147,7 +131,7 @@ impl FChatWriter {
         let idx_metadata = idx_fd.metadata()?;
         let idx_size = idx_metadata.len();
         if idx_size > 0 {
-            let log_fd = self.log_fd.as_ref().unwrap();
+            //let log_fd = self.log_fd.as_ref().unwrap();
             let mut idx_reader = BufReader::new(idx_fd);
             //let mut log_reader = BufReader::new(log_fd);
             eprintln!("{:?} has content, parsing...", self.idx_path);
@@ -166,7 +150,7 @@ impl FChatWriter {
             let log_size = log_fd.metadata()?.len();
             if log_size > 0 {
                 eprintln!("{:?} has content, regenerating indexes...", self.log_path);
-                let mut log_reader = BufReader::new(log_fd);
+                let log_reader = BufReader::new(log_fd);
                 let message_reader = FChatMessageReader::new(log_reader);
                 let mut current_offset: u64 = 0;
                 for result in message_reader {
