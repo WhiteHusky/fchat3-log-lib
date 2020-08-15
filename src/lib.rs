@@ -5,7 +5,7 @@ use chrono::Datelike;
 use crate::error::InadequateInformation;
 use std::fs::File;
 use std::path::PathBuf;
-use byteorder::LittleEndian;
+use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
 use std::io::Write;
 use std::io::Seek;
 use std::{fs::OpenOptions, io::{SeekFrom, Read, BufReader, BufWriter}};
@@ -19,10 +19,10 @@ use crate::error::Error;
 // https://discordapp.com/channels/442252698964721669/443150878111694848/742291981849460736
 
 pub trait ReadSeek: Read + Seek {}
-impl<T: Read + Seek> ReadSeek for T {}
+impl<T: Read + Seek + ReadBytesExt> ReadSeek for T {}
 
 pub trait ReadSeekWrite: Read + Seek + Write {}
-impl<T: Read + Seek + Write> ReadSeekWrite for T {}
+impl<T: Read + Seek + Write + WriteBytesExt> ReadSeekWrite for T {}
 
 pub struct FChatMessageReader<'a> {
     buf: Box<dyn Read + 'a>,
@@ -57,7 +57,7 @@ impl FChatMessageReaderReversed {
     }
 }
 
-fn reverse_seek<B: Seek + byteorder::ReadBytesExt>(buf: &mut B) -> std::io::Result<()> {
+fn reverse_seek<B: Seek + ReadBytesExt>(buf: &mut B) -> std::io::Result<()> {
     buf.seek(SeekFrom::Current(-2))?;
     let reverse_feed = buf.read_u16::<LittleEndian>()?;
     buf.seek(SeekFrom::Current(-2))?;
