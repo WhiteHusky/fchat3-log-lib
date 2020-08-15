@@ -1,7 +1,7 @@
-use crate::structs::FChatMessage;
-use std::error::Error;
+use crate::fchat_message::FChatMessage;
+use std::error;
 use std::fmt;
-use std::fmt::{Debug, Display, Formatter};
+use std::{io, fmt::{Debug, Display, Formatter}};
 
 pub struct BadMessageLength {
     pub message: FChatMessage,
@@ -29,7 +29,7 @@ impl Debug for BadMessageLength {
     }
 }
 
-impl Error for BadMessageLength {
+impl error::Error for BadMessageLength {
     fn description(&self) -> &str {
         "The message length was not correct and the message might be corrupted."
     }
@@ -55,7 +55,7 @@ impl Debug for UnknownMessageType {
     }
 }
 
-impl Error for UnknownMessageType {
+impl error::Error for UnknownMessageType {
     fn description(&self) -> &str {
         "The message type is unknown"
     }
@@ -85,7 +85,7 @@ impl Debug for ConformanceError {
     }
 }
 
-impl Error for ConformanceError {
+impl error::Error for ConformanceError {
     fn description(&self) -> &str {
         "The information inputted does not conform to what is expected. The standard may have changed or there's a problem with a file."
     }
@@ -115,8 +115,65 @@ impl Debug for InadequateInformation {
     }
 }
 
-impl Error for InadequateInformation {
+impl error::Error for InadequateInformation {
     fn description(&self) -> &str {
         "More information is needed to operate."
+    }
+}
+
+#[derive(Debug)]
+pub enum Error {
+    IOError(std::io::Error),
+    EOF(std::io::Error),
+    ConversionError(std::num::TryFromIntError),
+    MessageLengthError(BadMessageLength),
+    UTF8ConversionError(std::string::FromUtf8Error),
+    UnknownMessageTypeError(UnknownMessageType),
+    ConformanceError(ConformanceError),
+    InadequateInformation(InadequateInformation)
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        "failed to write or read message"
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(item: std::io::Error) -> Self {
+        match item.kind() {
+            io::ErrorKind::UnexpectedEof => {Self::EOF(item)}
+            _ => {Self::IOError(item)}
+        }
+    }
+}
+
+impl From<std::num::TryFromIntError> for Error {
+    fn from(item: std::num::TryFromIntError) -> Self {
+        Self::ConversionError(item)
+    }
+}
+
+impl From<BadMessageLength> for Error {
+    fn from(item: BadMessageLength) -> Self {
+        Self::MessageLengthError(item)
+    }
+}
+
+impl From<std::string::FromUtf8Error> for Error {
+    fn from(item: std::string::FromUtf8Error) -> Self {
+        Self::UTF8ConversionError(item)
+    }
+}
+
+impl From<UnknownMessageType> for Error {
+    fn from(item: UnknownMessageType) -> Self {
+        Self::UnknownMessageTypeError(item)
     }
 }

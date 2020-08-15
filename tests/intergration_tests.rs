@@ -1,5 +1,5 @@
 use chrono::{Local};
-use std::error::Error;
+use std::error;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -11,19 +11,19 @@ use std::io::{BufReader, BufWriter};
 const DIR_NAME: &str = "fchat3-log-lib-tests";
 const TEST_CONTENTS: &[u8] = include_bytes!("carlen white");
 const TEST_INDEX: &[u8] = include_bytes!("carlen white.idx");
-/*
-const TEST_CONTENTS: &[u8] = include_bytes!("carlen white");
-const TEST_INDEX: &[u8] = include_bytes!("carlen white.idx");
-*/
 
-use fchat3_log_lib::structs::{FChatMessage, FChatMessageType, ParseError};
+use fchat3_log_lib::fchat_message::{FChatMessage, FChatMessageType};
+use fchat3_log_lib::error::Error;
 use fchat3_log_lib::{FChatMessageReader, FChatMessageReaderReversed, FChatWriter};
 
-fn create_dir() -> Result<TempDir, Box<dyn Error>> {
+type BoxedError = Box<dyn error::Error>;
+
+
+fn create_dir() -> Result<TempDir, Box<dyn error::Error>> {
     Ok(TempDir::new(DIR_NAME)?)
 }
 
-fn create_test_file(dir: &TempDir, name: &str, contents: &[u8]) -> Result<std::fs::File, Box<dyn Error>> {
+fn create_test_file(dir: &TempDir, name: &str, contents: &[u8]) -> Result<std::fs::File, BoxedError> {
     let file_path_read = dir.path().join(name);
     let mut options = OpenOptions::new();
     options.read(true).write(true).create(true);
@@ -34,7 +34,7 @@ fn create_test_file(dir: &TempDir, name: &str, contents: &[u8]) -> Result<std::f
 }
 
 #[test]
-fn create() -> Result<(), Box<dyn Error>> {
+fn create() -> Result<(), BoxedError> {
     let dir = create_dir()?;
     let file_path = dir.path().join("write_me.log");
     let mut f = File::create(file_path)?;
@@ -50,7 +50,7 @@ fn create() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 #[test]
-fn create_and_read_basic() -> Result<(), Box<dyn Error>> {
+fn create_and_read_basic() -> Result<(), BoxedError> {
     let dir = create_dir()?;
     let file_path = dir.path().join("write_me.log");
     let mut options = OpenOptions::new();
@@ -76,7 +76,7 @@ fn create_and_read_basic() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 #[test]
-fn can_create_1_to_1_from_native() -> Result<(), Box<dyn Error>> {
+fn can_create_1_to_1_from_native() -> Result<(), BoxedError> {
     let dir = create_dir()?;
     let mut f_r = create_test_file(&dir, "1.log", TEST_CONTENTS)?;
     let file_path_write = dir.path().join("2.log");
@@ -115,7 +115,7 @@ fn can_create_1_to_1_from_native() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn read_using_reader() -> Result<(), Box<dyn Error>> {
+fn read_using_reader() -> Result<(), BoxedError> {
     let dir = create_dir()?;
     let f_r = create_test_file(&dir, "1.log", TEST_CONTENTS)?;
     let reader = FChatMessageReader::new(f_r);
@@ -126,7 +126,7 @@ fn read_using_reader() -> Result<(), Box<dyn Error>> {
             }
             Err(err) => {
                 match err {
-                    ParseError::EOF(_) => {
+                    Error::EOF(_) => {
                         println!("Reached end of file!");
                     }
                     _ => {
@@ -142,7 +142,7 @@ fn read_using_reader() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn check_index(log_fd: File, writer: FChatWriter) -> Result<(), Box<dyn Error>> {
+fn check_index(log_fd: File, writer: FChatWriter) -> Result<(), BoxedError> {
     let index = writer.index.unwrap();
     let mut log_reader = BufReader::new(log_fd);
     let mut tested: u64 = 0;
@@ -157,7 +157,7 @@ fn check_index(log_fd: File, writer: FChatWriter) -> Result<(), Box<dyn Error>> 
 }
 
 #[test]
-fn can_parse_index() -> Result<(), Box<dyn Error>> {
+fn can_parse_index() -> Result<(), BoxedError> {
     let dir = create_dir()?;
     let log_fd = create_test_file(&dir, "1", TEST_CONTENTS)?;
     let idx_fd = create_test_file(&dir, "1.idx", TEST_INDEX)?;
@@ -168,7 +168,7 @@ fn can_parse_index() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn can_create_index() -> Result<(), Box<dyn Error>> {
+fn can_create_index() -> Result<(), BoxedError> {
     let dir = create_dir()?;
     let log_fd = create_test_file(&dir, "1", TEST_CONTENTS)?;
     let writer = FChatWriter::new(dir.path().join("1"), Some(dir.path().join("1.idx")), Some("Carlen White".to_string()))?;
