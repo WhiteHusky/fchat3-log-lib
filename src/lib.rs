@@ -38,7 +38,11 @@ impl Iterator for FChatMessageReader<'_> {
     type Item = FChatMessageReaderResult;
 
     fn next(&mut self) -> Option<Self::Item> {
-        Some(ChatMessage::read_from_buf(&mut self.buf))
+        match ChatMessage::read_from_buf(&mut self.buf) {
+            Ok(message) => {Some(Ok(message))}
+            Err(Error::EOF(_)) => { None }
+            Err(err) => { Some(Err(err)) }
+        }
     }
 }
 
@@ -65,16 +69,24 @@ impl Iterator for FChatMessageReaderReversed {
     type Item = FChatMessageReaderResult;
 
     fn next(&mut self) -> Option<Self::Item> {
+        match self.buf.seek(SeekFrom::Current(0)) {
+            Ok(pos) => {
+                if pos == 0 {
+                    return None;
+                }
+            }
+            Err(err) => return Some(Err(Error::IOError(err)))
+        }
         match reverse_seek(&mut self.buf) {
             Ok(_) => {}
-            Err(_) => return None,
+            Err(err) => return Some(Err(Error::IOError(err)))
         };
-        let result = ChatMessage::read_from_buf(&mut self.buf);
-        match reverse_seek(&mut self.buf) {
-            Ok(_) => {}
-            Err(_) => return None,
-        };
-        Some(result)
+
+        match ChatMessage::read_from_buf(&mut self.buf) {
+            Ok(message) => {Some(Ok(message))}
+            Err(Error::EOF(_)) => { None }
+            Err(err) => { Some(Err(err)) }
+        }
     }
 }
 

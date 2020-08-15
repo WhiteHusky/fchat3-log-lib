@@ -41,7 +41,11 @@ impl FChatIndexOffset {
     }
 
     pub fn read_from_buf<T: Read + ReadBytesExt>(buf: &mut T) -> FChatIndexOffsetReaderResult {
-        let unix_days = buf.read_u16::<LittleEndian>()?;
+        let unix_days: u16;
+        match buf.read_u16::<LittleEndian>() {
+            Ok(number) => { unix_days = number; }
+            Err(err) => { return Err(Error::EOF(err)); }
+        };
         let unix_timestamp = (unix_days as u64 * SECONDS_IN_DAY as u64) as i64;
         let date = NaiveDateTime::from_timestamp(unix_timestamp, 0).date();
         let mut offset: u64 = 0;
@@ -75,8 +79,9 @@ impl FChatIndex {
 
     pub fn from_buf<T: Read + Seek + ReadBytesExt>(buf: &mut T) -> FChatIndexReaderResult {
         let name_length = buf.read_u8()?;
-        let mut name_raw: Vec<u8> = vec![0; name_length as usize];
-        buf.read_exact(name_raw.as_mut_slice())?;
+        let mut name_raw: Vec<u8> = Vec::with_capacity(name_length as usize);
+        unsafe { name_raw.set_len(name_length as usize) }
+        buf.read_exact(&mut name_raw)?;
         let name = String::from_utf8(name_raw)?;
         let mut offsets = Vec::<FChatIndexOffset>::new();
         //let size = buf.stream_len()?;

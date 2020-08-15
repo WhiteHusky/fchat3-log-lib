@@ -147,10 +147,11 @@ impl error::Error for Error {
 
 impl From<std::io::Error> for Error {
     fn from(item: std::io::Error) -> Self {
-        match item.kind() {
+        /*match item.kind() {
             io::ErrorKind::UnexpectedEof => {Self::EOF(item)}
             _ => {Self::IOError(item)}
-        }
+        }*/
+        Self::IOError(item)
     }
 }
 

@@ -118,16 +118,22 @@ impl FChatMessage {
     pub fn read_from_buf<B: io::Read + ReadBytesExt>(
         buffer: &mut B,
     ) -> FChatMessageReaderResult {
-        let datetime_buf = buffer.read_u32::<LittleEndian>()?;
+        let datetime_buf: u32;
+        match buffer.read_u32::<LittleEndian>() {
+            Ok(number) => { datetime_buf = number; }
+            Err(err) => { return Err(Error::EOF(err)); }
+        };
         let datetime: NaiveDateTime = NaiveDateTime::from_timestamp(datetime_buf as i64, 0);
         let message_type: u8 = buffer.read_u8()?;
         let sender_length: u8 = buffer.read_u8()?;
-        let mut sender_raw = vec![0; sender_length as usize];
-        buffer.read_exact(sender_raw.as_mut_slice())?;
+        let mut sender_raw: Vec<u8> = Vec::with_capacity(sender_length as usize);
+        unsafe { sender_raw.set_len(sender_length as usize) }
+        buffer.read_exact(&mut sender_raw)?;
         let sender = String::from_utf8(sender_raw)?;
         let message_length: u16 = buffer.read_u16::<LittleEndian>()?;
-        let mut message_raw = vec![0; message_length as usize];
-        buffer.read_exact(message_raw.as_mut_slice())?;
+        let mut message_raw: Vec<u8> = Vec::with_capacity(message_length as usize);
+        unsafe { message_raw.set_len(message_length as usize) }
+        buffer.read_exact(&mut message_raw)?;
         let message = String::from_utf8(message_raw)?;
         let fchat_message = FChatMessage {
             datetime: datetime,

@@ -120,23 +120,8 @@ fn read_using_reader() -> Result<(), BoxedError> {
     let f_r = create_test_file(&dir, "1.log", TEST_CONTENTS)?;
     let reader = FChatMessageReader::new(f_r);
     for result in reader {
-        match result {
-            Ok(message) => {
-                println!("{:?}", message);
-            }
-            Err(err) => {
-                match err {
-                    Error::EOF(_) => {
-                        println!("Reached end of file!");
-                    }
-                    _ => {
-                        println!("{:?}", err);
-                        panic!()
-                    }
-                }
-                break;
-            }
-        }
+        let message = result?;
+        println!("{:?}", message);
     }
     dir.close()?;
     Ok(())
