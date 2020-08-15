@@ -11,9 +11,7 @@ use std::io::{BufReader};
 const DIR_NAME: &str = "fchat3-log-lib-tests";
 const TEST_CONTENTS: &[u8] = include_bytes!("carlen white");
 const TEST_INDEX: &[u8] = include_bytes!("carlen white.idx");
-
 use fchat3_log_lib::fchat_message::{FChatMessage, FChatMessageType};
-use fchat3_log_lib::error::Error;
 use fchat3_log_lib::{FChatMessageReader, FChatWriter};
 
 type BoxedError = Box<dyn error::Error>;

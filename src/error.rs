@@ -1,7 +1,7 @@
 use crate::fchat_message::FChatMessage;
 use std::error;
 use std::fmt;
-use std::{io, fmt::{Debug, Display, Formatter}};
+use std::fmt::{Debug, Display, Formatter};
 
 pub struct BadMessageLength {
     pub message: FChatMessage,
