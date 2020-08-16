@@ -9,13 +9,20 @@ use std::{io, fmt::{self, Debug, Display, Formatter}, convert::TryInto};
 pub type FChatMessageReaderResult = Result<FChatMessage, Error>;
 pub type FChatMessageWriterResult = Result<(), Error>;
 
+/// Message types
 #[derive(Clone)]
 pub enum FChatMessageType {
+    /// Chat message
     Message(String),
+    /// Action message (/me)
     Action(String),
+    /// Ad message
     Ad(String),
+    /// Roll message
     Roll(String),
+    /// Warn message
     Warn(String),
+    /// Event message (status changes)
     Event(String),
 }
 
@@ -71,9 +78,13 @@ impl Debug for FChatMessageType {
     }
 }
 
+/// Represents a chat message
 pub struct FChatMessage {
+    /// Date of the [message](struct.FChatMessage.html)
     pub datetime: NaiveDateTime,
+    /// Who sent the [message](struct.FChatMessage.html)
     pub sender: String,
+    /// The body of the [message](struct.FChatMessage.html) as a [enum](enum.FChatMessageType.html)
     pub body: FChatMessageType,
 }
 
