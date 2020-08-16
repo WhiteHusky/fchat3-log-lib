@@ -30,7 +30,7 @@ pub struct FChatMessageReader<'a> {
 
 impl FChatMessageReader<'_> {
     pub fn new<'message_reader, T: 'message_reader +  Read>(buf: T) -> FChatMessageReader<'message_reader> {
-        FChatMessageReader { buf: Box::new(BufReader::new(buf)) }
+        FChatMessageReader { buf: Box::new(buf) }
     }
 }
 
