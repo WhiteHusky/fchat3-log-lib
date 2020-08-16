@@ -29,8 +29,8 @@ pub struct FChatMessageReader<'a> {
 }
 
 impl FChatMessageReader<'_> {
-    pub fn new<'a, T: 'a +  Read>(buf: T) -> FChatMessageReader<'a> {
-        FChatMessageReader { buf: Box::new(buf) }
+    pub fn new<'message_reader, T: 'message_reader +  Read>(buf: T) -> FChatMessageReader<'message_reader> {
+        FChatMessageReader { buf: Box::new(BufReader::new(buf)) }
     }
 }
 
