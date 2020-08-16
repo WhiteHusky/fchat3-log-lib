@@ -77,18 +77,25 @@ impl FChatIndex {
         Ok(())
     }
 
-    pub fn from_buf<T: Read + Seek + ReadBytesExt>(buf: &mut T) -> FChatIndexReaderResult {
+    pub fn read_header_from_buf<T: Read + ReadBytesExt>(buf: &mut T) -> FChatIndexReaderResult {
         let name_length = buf.read_u8()?;
         let mut name_raw: Vec<u8> = Vec::with_capacity(name_length as usize);
         unsafe { name_raw.set_len(name_length as usize) }
         buf.read_exact(&mut name_raw)?;
         let name = String::from_utf8(name_raw)?;
-        let mut offsets = Vec::<FChatIndexOffset>::new();
-        //let size = buf.stream_len()?;
+        let index = FChatIndex {
+            name: name,
+            offsets: Vec::new(),
+        };
+        Ok(index)
+    }
+
+    pub fn from_buf<T: Read + Seek + ReadBytesExt>(buf: &mut T) -> FChatIndexReaderResult {
+        let mut index = Self::read_header_from_buf(buf)?;
         loop {
             match FChatIndexOffset::read_from_buf(buf) {
                 Ok(index_offset) => {
-                    offsets.push(index_offset);
+                    index.offsets.push(index_offset);
                 }
                 Err(Error::EOF(_)) => {
                     break
@@ -98,10 +105,6 @@ impl FChatIndex {
                 }
             }
         }
-        let index = FChatIndex {
-            name: name,
-            offsets: offsets,
-        };
         Ok(index)
     }
 }

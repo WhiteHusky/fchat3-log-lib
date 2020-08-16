@@ -125,9 +125,10 @@ fn read_using_reader() -> Result<(), BoxedError> {
     Ok(())
 }
 
-fn check_index(log_fd: File, writer: FChatWriter) -> Result<(), BoxedError> {
-    let index = writer.index.unwrap();
-    let mut log_reader = BufReader::new(log_fd);
+fn check_index(writer: FChatWriter) -> Result<(), BoxedError> {
+    let log_buf = writer.log_buf;
+    let index = writer.index;
+    let mut log_reader = BufReader::new(log_buf);
     let mut tested: u64 = 0;
     for offset in index.offsets {
         log_reader.seek(SeekFrom::Start(offset.offset))?;
@@ -143,10 +144,9 @@ fn check_index(log_fd: File, writer: FChatWriter) -> Result<(), BoxedError> {
 fn can_parse_index() -> Result<(), BoxedError> {
     let dir = create_dir()?;
     let log_fd = create_test_file(&dir, "1", TEST_CONTENTS)?;
-    create_test_file(&dir, "1.idx", TEST_INDEX)?;
-    //let idx_fd = create_test_file(&dir, "1.idx", TEST_INDEX)?;
-    let writer = FChatWriter::new(dir.path().join("1"), Some(dir.path().join("1.idx")), None)?;
-    check_index(log_fd, writer)?;
+    let idx_fd = create_test_file(&dir, "1.idx", TEST_INDEX)?;
+    let writer = FChatWriter::from_idx(log_fd, idx_fd)?;
+    check_index(writer)?;
     dir.close()?;
     Ok(())
 }
@@ -155,8 +155,42 @@ fn can_parse_index() -> Result<(), BoxedError> {
 fn can_create_index() -> Result<(), BoxedError> {
     let dir = create_dir()?;
     let log_fd = create_test_file(&dir, "1", TEST_CONTENTS)?;
-    let writer = FChatWriter::new(dir.path().join("1"), Some(dir.path().join("1.idx")), Some("Carlen White".to_string()))?;
-    check_index(log_fd, writer)?;
+    let mut options = OpenOptions::new();
+    options.read(true).write(true).create(true);
+    let idx_fd = options.open(dir.path().join("1.idx"))?;
+    let writer = FChatWriter::from_log(log_fd, idx_fd, "Carlen White".to_string())?;
+    check_index(writer)?;
+    dir.close()?;
+    Ok(())
+}
+
+#[test]
+fn can_regenerate_index() -> Result<(), BoxedError> {
+    let dir = create_dir()?;
+    let log_fd = create_test_file(&dir, "1", TEST_CONTENTS)?;
+    let idx_fd = create_test_file(&dir, "1.idx", TEST_INDEX)?;
+    FChatWriter::regenerate_idx(&log_fd,&idx_fd)?;
+    let writer = FChatWriter::from_idx(log_fd, idx_fd)?;
+    check_index(writer)?;
+    dir.close()?;
+    Ok(())
+}
+
+#[test]
+fn can_write_using_writer() -> Result<(), BoxedError> {
+    let mut options = OpenOptions::new();
+    options.read(true).write(true).create(true);
+    let dir = create_dir()?;
+    let source_log_fd = create_test_file(&dir, "source", TEST_CONTENTS)?;
+    let reader = FChatMessageReader::new(source_log_fd);
+    let log_fd = options.open(dir.path().join("1"))?;
+    let idx_fd = options.open(dir.path().join("1.idx"))?;
+    let mut writer = FChatWriter::new(log_fd, idx_fd, "Test!".to_string())?;
+    for result in reader {
+        let message = result?;
+        writer.write_message(message)?;
+    }
+    check_index(writer)?;
     dir.close()?;
     Ok(())
 }

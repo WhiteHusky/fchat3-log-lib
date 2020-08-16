@@ -6,7 +6,7 @@ use std::fmt::{Debug, Display, Formatter};
 pub struct BadMessageLength {
     pub message: FChatMessage,
     pub expected: usize,
-    pub found: usize,
+    pub found: u64,
 }
 
 impl Display for BadMessageLength {

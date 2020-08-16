@@ -27,10 +27,10 @@ pub enum FChatMessageType {
 }
 
 impl FChatMessageType {
-    fn bytes_used(&self) -> usize {
+    fn bytes_used(&self) -> u64 {
         match self {
             Message(string) | Action(string) | Ad(string) | Roll(string) | Warn(string)
-            | Event(string) => string.as_bytes().len(),
+            | Event(string) => string.as_bytes().len() as u64,
         }
     }
 
@@ -101,8 +101,8 @@ pub struct FChatMessage {
 */
 
 impl FChatMessage {
-    pub fn bytes_used(&self) -> usize {
-        return 4 + 1 + 1 + self.sender.as_bytes().len() + 2 + self.body.bytes_used();
+    pub fn bytes_used(&self) -> u64 {
+        return 4 + 1 + 1 + self.sender.as_bytes().len() as u64 + 2 + self.body.bytes_used();
     }
 
     pub fn write_to_buf<B: io::Write + WriteBytesExt>(
