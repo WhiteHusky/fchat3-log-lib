@@ -78,16 +78,24 @@ impl Iterator for FChatMessageReaderReversed {
             }
             Err(err) => return Some(Err(Error::IOError(err)))
         }
+
         match reverse_seek(&mut self.buf) {
             Ok(_) => {}
             Err(err) => return Some(Err(Error::IOError(err)))
         };
 
-        match ChatMessage::read_from_buf(&mut self.buf) {
+        let return_value = match ChatMessage::read_from_buf(&mut self.buf) {
             Ok(message) => {Some(Ok(message))}
             Err(Error::EOF(_)) => { None }
             Err(err) => { Some(Err(err)) }
-        }
+        };
+        
+        match reverse_seek(&mut self.buf) {
+            Ok(_) => {}
+            Err(err) => return Some(Err(Error::IOError(err)))
+        };
+        
+        return_value
     }
 }
 
