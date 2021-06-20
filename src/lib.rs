@@ -59,10 +59,9 @@ impl FChatMessageReaderReversed {
 }
 
 fn reverse_seek<B: Seek + ReadBytesExt>(buf: &mut B) -> std::io::Result<()> {
-    buf.seek(SeekFrom::Current(-2))?;
     let reverse_feed = buf.read_u16::<LittleEndian>()?;
-    buf.seek(SeekFrom::Current(-2))?;
-    buf.seek(SeekFrom::Current((reverse_feed as i64) * -1))?;
+    // I'm seeking -4 for some reason. Have to remember why.
+    buf.seek(SeekFrom::Current(-4 + (reverse_feed as i64) * -1))?;
     Ok(())
 }
 
