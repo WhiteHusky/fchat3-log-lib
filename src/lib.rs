@@ -3,7 +3,6 @@ pub mod error;
 pub mod fchat_index;
 use crate::fchat_message::FChatMessage;
 use chrono::Datelike;
-use std::{fs::File};
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
 use std::io::{Write, Seek};
 use std::io::{SeekFrom, Read};
@@ -20,6 +19,9 @@ impl<T: Read + Seek + ReadBytesExt> ReadSeek for T {}
 
 pub trait ReadSeekWrite: Read + Seek + Write {}
 impl<T: Read + Seek + Write + WriteBytesExt + ReadBytesExt> ReadSeekWrite for T {}
+
+pub trait SeekWrite: Seek + Write {}
+impl<T: Seek + Write + WriteBytesExt> SeekWrite for T {}
 
 pub fn different_day<A: Datelike, B: Datelike>(d1: A, d2: B) -> bool {
     d1.year() != d2.year() || d1.month() != d2.month() || d1.day() != d2.day()
@@ -98,98 +100,62 @@ impl Iterator for FChatMessageReaderReversed {
     }
 }
 
-pub struct FChatWriter<'writer> {
-    pub index: Index,
-    pub log_buf: Box<dyn ReadSeekWrite + 'writer>,
-    pub idx_buf: Box<dyn ReadSeekWrite + 'writer>,
+pub struct FChatWriter {
+    pub index: Index
 }
 
-impl FChatWriter<'_> {
-
-    /// Using an existing idx file and log file, initialize the index with the idx file
-    pub fn from_idx<'writer, A: 'writer + ReadSeekWrite, B: 'writer + ReadSeekWrite>(mut log_buf: A, mut idx_buf: B) -> Result<FChatWriter<'writer>, Error> {
-        let index = Index::from_buf(&mut idx_buf)?;
+impl FChatWriter {
+    /// Using an existing idx, initialize the index with the idx file
+    pub fn init_from_idx<A: Seek, B: ReadSeek>(log_buf: &mut A, idx_buf: &mut B) -> Result<Self, Error> {
+        let index = Index::from_buf(idx_buf)?;
         log_buf.seek(SeekFrom::End(0))?;
-        Ok(FChatWriter {
-            index: index,
-            log_buf: Box::new(log_buf),
-            idx_buf: Box::new(idx_buf),
+        Ok(Self {
+            index: index
         })
     }
 
     /// Using an existing log file and missing idx, initialize the index with the log and write to the idx file
-    pub fn from_log<'writer, A: 'writer + ReadSeekWrite, B: 'writer + ReadSeekWrite>(log_buf: A, idx_buf: B, name: String) -> Result<FChatWriter<'writer>, Error> {
-        let mut writer = Self::new(log_buf, idx_buf, name)?;
-        writer.write_offsets_from_log()?;
-        Ok(writer)
-    }
-
-    /// Using an existing log file and broken idx, repair the idx file.
-    pub fn regenerate_idx(mut log_file: &File, mut idx_file: &File) -> Result<(), Error> {
-        //idx_buf.set_len();
-        let index = Index::read_header_from_buf(&mut idx_file)?;
-        let new_size = idx_file.seek(SeekFrom::Current(0))?;
-        idx_file.set_len(new_size)?;
-        let mut writer = FChatWriter {
-            index: index,
-            log_buf: Box::new(log_file),
-            idx_buf: Box::new(idx_file),
-        };
-        writer.write_offsets_from_log()?;
-        log_file.seek(SeekFrom::Start(0))?;
-        idx_file.seek(SeekFrom::Start(0))?;
-        Ok(())
-    }
-
-    pub fn new<'writer, A: 'writer + ReadSeekWrite, B: 'writer + ReadSeekWrite>(log_buf: A, idx_buf: B, name: String) -> Result<FChatWriter<'writer>, Error> {
-        let mut writer = FChatWriter {
-            index: Index {
-                name: name,
-                offsets: Vec::new()
-            },
-            log_buf: Box::new(log_buf),
-            idx_buf: Box::new(idx_buf),
-        };
-        writer.index.write_header_to_buf(&mut writer.idx_buf)?;
-        Ok(writer)
-    }
-
-    fn write_offsets_from_log(&mut self) -> Result<(), Error> {
+    pub fn init_from_log<A: ReadSeek, B: SeekWrite>(log_buf: &mut A, idx_buf: &mut B, tab_name: String) -> Result<Self, Error> {
+        let mut writer = Self::new(idx_buf, tab_name)?;
         loop {
-            match FChatMessage::read_from_buf(&mut self.log_buf) {
+            match FChatMessage::read_from_buf(log_buf) {
                 Ok(message) => {
-                    self.update_idx_with_message(message)?;
+                    writer.update_idx_with_message(log_buf, idx_buf, message)?;
                 }
                 Err(Error::EOF(_)) => { break }
                 Err(err) => { return Err(err); }
             }
         }
+        Ok(writer)
+    }
+
+    pub fn new<B: SeekWrite>(idx_buf: &mut B, tab_name: String) -> Result<Self, Error>  {
+        let writer = Self {
+            index: Index::new(tab_name)
+        };
+        writer.index.write_header_to_buf(idx_buf)?;
+        Ok(writer)
+    }
+
+    pub fn write_message<A: SeekWrite, B: SeekWrite>(&mut self, log_buf: &mut A, idx_buf: &mut B, message: FChatMessage) -> Result<(), Error> {
+        message.write_to_buf(log_buf)?;
+        self.update_idx_with_message(log_buf, idx_buf, message)?;
         Ok(())
     }
 
-    /// Commit message to file and update the idx if needed.
-    pub fn write_message(&mut self, message: FChatMessage) -> Result<(), Error> {
-        //self.log_buf.seek(SeekFrom::End(0))?;
-        message.write_to_buf(&mut self.log_buf)?;
-        self.update_idx_with_message(message)?;
-        Ok(())
-    }
-
-    /// This is typically reading with the reader or writing with the writer, so the seek location of the log_buf should be right after the read message.
-    /// Aka, this function is run after reading a message or writing it from/to the log stream.
-    fn update_idx_with_message(&mut self, message: FChatMessage) -> Result<(), Error> {
+    fn update_idx_with_message<A: Seek, B: SeekWrite>(&mut self, log_buf: &mut A, idx_buf: &mut B, message: FChatMessage) -> Result<(), Error> {
         if match self.index.offsets.last() {
             Some(offset) => {
                 different_day(message.datetime, offset.date)
             }
             None => { true }
         } {
-            let offset_pos = self.log_buf.seek(SeekFrom::Current(0))? - (message.bytes_used() + 2);
+            let offset_pos = log_buf.seek(SeekFrom::Current(0))? - (message.bytes_used() + 2);
             let offset = IndexOffset {
                 date: message.datetime.date(),
                 offset: offset_pos
             };
-            offset.write_to_buf(&mut self.idx_buf)?;
+            offset.write_to_buf(idx_buf)?;
             self.index.offsets.push(offset);
             
         }

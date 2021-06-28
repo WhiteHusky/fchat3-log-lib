@@ -1,3 +1,4 @@
+/* TODO: UPDATE THIS!
 use chrono::{Local};
 use std::error;
 use std::fs::File;
@@ -194,3 +195,4 @@ fn can_write_using_writer() -> Result<(), BoxedError> {
     dir.close()?;
     Ok(())
 }
+*/
