@@ -79,6 +79,7 @@ impl Debug for FChatMessageType {
 }
 
 /// Represents a chat message
+#[derive(Clone)]
 pub struct FChatMessage {
     /// Date of the [message](struct.FChatMessage.html)
     pub datetime: NaiveDateTime,
