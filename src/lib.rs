@@ -1,13 +1,12 @@
 pub mod fchat_message;
 pub mod error;
 pub mod fchat_index;
-use crate::fchat_message::FChatMessage;
 use chrono::Datelike;
 use std::{fs::File};
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
 use std::io::{Write, Seek};
 use std::io::{SeekFrom, Read};
-use crate::fchat_message::{FChatMessageReaderResult, FChatMessage as ChatMessage};
+use crate::fchat_message::{FChatMessageReaderResult, FChatMessage};
 use crate::fchat_index::FChatIndex as Index;
 use crate::fchat_index::FChatIndexOffset as IndexOffset;
 use crate::error::Error;
@@ -39,7 +38,7 @@ impl Iterator for FChatMessageReader<'_> {
     type Item = FChatMessageReaderResult;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match ChatMessage::read_from_buf(&mut self.buf) {
+        match FChatMessage::read_from_buf(&mut self.buf) {
             Ok(message) => {Some(Ok(message))}
             Err(Error::EOF(_)) => { None }
             Err(err) => { Some(Err(err)) }
@@ -83,7 +82,7 @@ impl Iterator for FChatMessageReaderReversed {
             Err(err) => return Some(Err(Error::IOError(err)))
         };
 
-        let return_value = match ChatMessage::read_from_buf(&mut self.buf) {
+        let return_value = match FChatMessage::read_from_buf(&mut self.buf) {
             Ok(message) => {Some(Ok(message))}
             Err(Error::EOF(_)) => { None }
             Err(err) => { Some(Err(err)) }
