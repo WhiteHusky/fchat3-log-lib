@@ -10,7 +10,7 @@ pub type FChatMessageReaderResult = Result<FChatMessage, Error>;
 pub type FChatMessageWriterResult = Result<(), Error>;
 
 /// Message types
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum FChatMessageType {
     /// Chat message
     Message(String),
@@ -79,7 +79,7 @@ impl Debug for FChatMessageType {
 }
 
 /// Represents a chat message
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct FChatMessage {
     /// Date of the [message](struct.FChatMessage.html)
     pub datetime: NaiveDateTime,
