@@ -1,12 +1,11 @@
 pub mod fchat_message;
 pub mod error;
 pub mod fchat_index;
-use crate::fchat_message::FChatMessage;
 use chrono::Datelike;
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
 use std::io::{Write, Seek};
 use std::io::{SeekFrom, Read};
-use crate::fchat_message::{FChatMessageReaderResult, FChatMessage as ChatMessage};
+use crate::fchat_message::FChatMessage;
 use crate::fchat_index::FChatIndex as Index;
 use crate::fchat_index::FChatIndexOffset as IndexOffset;
 use crate::error::Error;
@@ -27,36 +26,33 @@ pub fn different_day<A: Datelike, B: Datelike>(d1: A, d2: B) -> bool {
     d1.year() != d2.year() || d1.month() != d2.month() || d1.day() != d2.day()
 }
 
-pub struct FChatMessageReader<'a> {
-    buf: Box<dyn Read + 'a>,
+pub fn read_fchatmessage_from_buf<A: Read>(log_buf: &mut A) -> Result<Option<FChatMessage>, Error> {
+    read_fchatmessage(log_buf)
 }
 
-impl FChatMessageReader<'_> {
-    pub fn new<'message_reader, T: 'message_reader +  Read>(buf: T) -> FChatMessageReader<'message_reader> {
-        FChatMessageReader { buf: Box::new(buf) }
+#[inline]
+fn read_fchatmessage<A: Read>(log_buf: &mut A) -> Result<Option<FChatMessage>, Error> {
+    match FChatMessage::read_from_buf(log_buf) {
+        Ok(message) => {Ok(Some(message))}
+        Err(Error::EOF(_)) => { Ok(None) }
+        Err(err) => { Err(err) }
     }
 }
 
-impl Iterator for FChatMessageReader<'_> {
-    type Item = FChatMessageReaderResult;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match ChatMessage::read_from_buf(&mut self.buf) {
-            Ok(message) => {Some(Ok(message))}
-            Err(Error::EOF(_)) => { None }
-            Err(err) => { Some(Err(err)) }
+pub fn read_fchatmessage_from_buf_reversed<A: ReadSeek>(log_buf: &mut A) -> Result<Option<FChatMessage>, Error> {
+    match log_buf.seek(SeekFrom::Current(0)).map_err(|e| Error::IOError(e)) {
+        Err(e) => Err(e),
+        Ok(0) => Ok(None),
+        Ok(_) => {
+            reverse_seek(log_buf)?;
+            match read_fchatmessage(log_buf) {
+                Ok(message) => {
+                    reverse_seek(log_buf)?;
+                    Ok(message)
+                },
+                Err(e) => Err(e),
+            }
         }
-    }
-}
-
-pub struct FChatMessageReaderReversed {
-    buf: Box<dyn ReadSeek>,
-}
-
-impl FChatMessageReaderReversed {
-    pub fn new<T: 'static + ReadSeek>(mut buf: T) -> FChatMessageReaderReversed {
-        buf.seek(SeekFrom::End(0)).unwrap();
-        FChatMessageReaderReversed { buf: Box::new(buf) }
     }
 }
 
@@ -65,39 +61,6 @@ fn reverse_seek<B: Seek + ReadBytesExt>(buf: &mut B) -> std::io::Result<()> {
     // I'm seeking -4 for some reason. Have to remember why.
     buf.seek(SeekFrom::Current(-4 + (reverse_feed as i64) * -1))?;
     Ok(())
-}
-
-impl Iterator for FChatMessageReaderReversed {
-    type Item = FChatMessageReaderResult;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.buf.seek(SeekFrom::Current(0)) {
-            Ok(pos) => {
-                if pos == 0 {
-                    return None;
-                }
-            }
-            Err(err) => return Some(Err(Error::IOError(err)))
-        }
-
-        match reverse_seek(&mut self.buf) {
-            Ok(_) => {}
-            Err(err) => return Some(Err(Error::IOError(err)))
-        };
-
-        let return_value = match ChatMessage::read_from_buf(&mut self.buf) {
-            Ok(message) => {Some(Ok(message))}
-            Err(Error::EOF(_)) => { None }
-            Err(err) => { Some(Err(err)) }
-        };
-        
-        match reverse_seek(&mut self.buf) {
-            Ok(_) => {}
-            Err(err) => return Some(Err(Error::IOError(err)))
-        };
-        
-        return_value
-    }
 }
 
 pub struct FChatWriter {
