@@ -35,32 +35,6 @@ impl error::Error for BadMessageLength {
     }
 }
 
-pub struct UnknownMessageType {
-    pub found: u8,
-}
-
-impl Display for UnknownMessageType {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(
-            f,
-            "The message type is unknown ({}). Did the log format change?",
-            self.found
-        )
-    }
-}
-
-impl Debug for UnknownMessageType {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "UnknownMessageType {{ found: {} }}", self.found)
-    }
-}
-
-impl error::Error for UnknownMessageType {
-    fn description(&self) -> &str {
-        "The message type is unknown"
-    }
-}
-
 pub struct ConformanceError {
     pub reason: String
 }
@@ -128,7 +102,6 @@ pub enum Error {
     ConversionError(std::num::TryFromIntError),
     MessageLengthError(BadMessageLength),
     UTF8ConversionError(std::string::FromUtf8Error),
-    UnknownMessageTypeError(UnknownMessageType),
     ConformanceError(ConformanceError),
     InadequateInformation(InadequateInformation)
 }
@@ -170,11 +143,5 @@ impl From<BadMessageLength> for Error {
 impl From<std::string::FromUtf8Error> for Error {
     fn from(item: std::string::FromUtf8Error) -> Self {
         Self::UTF8ConversionError(item)
-    }
-}
-
-impl From<UnknownMessageType> for Error {
-    fn from(item: UnknownMessageType) -> Self {
-        Self::UnknownMessageTypeError(item)
     }
 }

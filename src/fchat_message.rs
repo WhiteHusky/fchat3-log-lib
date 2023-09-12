@@ -2,9 +2,9 @@ use byteorder::ReadBytesExt;
 use byteorder::LittleEndian;
 use byteorder::WriteBytesExt;
 use crate::error::Error;
-use crate::error::{UnknownMessageType, BadMessageLength};
+use crate::error::BadMessageLength;
 use crate::fchat_message::FChatMessageType::*;
-use chrono::{NaiveDateTime};
+use chrono::NaiveDateTime;
 use std::{io, fmt::{self, Debug, Display, Formatter}, convert::TryInto};
 pub type FChatMessageReaderResult = Result<FChatMessage, Error>;
 pub type FChatMessageWriterResult = Result<(), Error>;
@@ -24,13 +24,17 @@ pub enum FChatMessageType {
     Warn(String),
     /// Event message (status changes)
     Event(String),
+    /// Broadcast message (F-Chat Rising Specific),
+    Broadcast(String),
+    /// All other messages not accounted for in the future
+    Unknown(u8, String)
 }
 
 impl FChatMessageType {
     fn bytes_used(&self) -> u64 {
         match self {
             Message(string) | Action(string) | Ad(string) | Roll(string) | Warn(string)
-            | Event(string) => string.as_bytes().len() as u64,
+            | Event(string) | Broadcast(string) | Unknown(_, string) => string.as_bytes().len() as u64,
         }
     }
 
@@ -42,18 +46,21 @@ impl FChatMessageType {
             Roll(_) => 3,
             Warn(_) => 4,
             Event(_) => 5,
+            Broadcast(_) => 6,
+            Unknown(message_type, _) => *message_type,
         }
     }
 
-    fn from_byte(byte: u8, string: String) -> Result<FChatMessageType, UnknownMessageType> {
+    fn from_byte(byte: u8, string: String) -> FChatMessageType {
         match byte {
-            0 => Ok(Message(string)),
-            1 => Ok(Action(string)),
-            2 => Ok(Ad(string)),
-            3 => Ok(Roll(string)),
-            4 => Ok(Warn(string)),
-            5 => Ok(Event(string)),
-            _ => Err(UnknownMessageType { found: byte }),
+            0 => Message(string),
+            1 => Action(string),
+            2 => Ad(string),
+            3 => Roll(string),
+            4 => Warn(string),
+            5 => Event(string),
+            6 => Broadcast(string),
+            _ => Unknown(byte, string),
         }
     }
 }
@@ -67,6 +74,8 @@ impl Display for FChatMessageType {
             Roll(this_string) => this_string,
             Warn(this_string) => this_string,
             Event(this_string) => this_string,
+            Broadcast(this_string) => this_string,
+            Unknown(_, this_string) => this_string,
         };
         write!(f, "{}", string)
     }
@@ -121,7 +130,7 @@ impl FChatMessage {
         buffer.write_u16::<LittleEndian>(message_length)?;
         buffer.write(match &self.body {
             Message(string) | Action(string) | Ad(string) | Roll(string) | Warn(string)
-            | Event(string) => string.as_bytes(),
+            | Event(string) | Broadcast(string) | Unknown(_, string)=> string.as_bytes(),
         })?;
         buffer.write_u16::<LittleEndian>(log_length)?;
         Ok(())
@@ -150,7 +159,7 @@ impl FChatMessage {
         let fchat_message = FChatMessage {
             datetime: datetime,
             sender: sender,
-            body: FChatMessageType::from_byte(message_type, message)?,
+            body: FChatMessageType::from_byte(message_type, message),
         };
         let reverse_feed: u16 = buffer.read_u16::<LittleEndian>()?;
         let actual_length = fchat_message.bytes_used();
