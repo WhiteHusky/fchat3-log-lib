@@ -5,7 +5,7 @@ use crate::error::Error;
 use byteorder::LittleEndian;
 use chrono::{NaiveTime, NaiveDate, NaiveDateTime};
 use byteorder::WriteBytesExt;
-use std::{convert::TryInto, io::{Write}};
+use std::{convert::TryInto, io::Write};
 pub type FChatIndexOffsetReaderResult = Result<FChatIndexOffset, Error>;
 pub type FChatIndexOffsetWriterResult = Result<(), Error>;
 pub type FChatIndexReaderResult = Result<FChatIndex, Error>;
