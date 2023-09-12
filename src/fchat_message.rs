@@ -24,7 +24,7 @@ pub enum FChatMessageType {
     Warn(String),
     /// Event message (status changes)
     Event(String),
-    /// Broadcast message (F-Chat Rising Specific),
+    /// Broadcast message (F-Chat Rising Specific)
     Broadcast(String),
     /// All other messages not accounted for in the future
     Unknown(u8, String)
